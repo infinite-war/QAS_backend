@@ -69,5 +69,4 @@ public class User implements Serializable {
 
     //身份
     private Integer role;
-
 }

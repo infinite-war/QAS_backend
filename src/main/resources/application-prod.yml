@@ -7,10 +7,15 @@ spring:
     username: (your name)
     password: (your password)
     url: jdbc:mysql://localhost:3306/campus_forum?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+
   redis:
     port: 6379
     host: localhost
     database: 0
+
+  elasticsearch:
+    uris: 127.0.0.1:9200
+
   jackson:
     serialization:
       indent_output: true
@@ -21,3 +26,4 @@ spring:
     parser:
       allow_unquoted_control_chars: true
       allow_single_quotes: true
+

@@ -20,7 +20,8 @@
     - RedisTemplate（对应Redis）
     - JWT
     - Maven
-4. 如何运行
+    - elasticsearch(8.4.3)
+3. 如何运行
     - 在MySQL中新建forum数据库，执行schema.sql脚本
     - 更改application-prod.yml中的配置
     - 运行Application类中main方法
