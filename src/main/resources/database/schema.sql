@@ -1,25 +1,20 @@
-# 数据库名为campus_forum
+# 数据库名为QAS
 
-create database campus_forum;
-
-create table user(
-    user_id      bigint auto_increment comment '用户ID',
-    username     varchar(20)   null comment '用户名',
-    password     char(32)      null comment '密码',
-    nickname     varchar(20)   null comment '昵称',
-    gender       int           null comment '性别',
-    college      varchar(10)   null comment '学院',
-    birthday     date          null comment '生日',
-    phone        varchar(20)   null comment '手机号',
-    email        varchar(30)   null comment '邮箱',
-    introduction varchar(200)  null comment '简介',
-    level        int           null comment '论坛等级',
-    points       int           null comment '论坛积分',
-    published    int           null comment '累计发帖',
-    visits       bigint        null comment '被访问次数',
-    likes        int           null comment '被点赞数',
-    role         int default 1 null comment '身份',
-    constraint user2_user_id_uindex
+create database qas;
+# drop user if exists `user`;
+use qas;
+create table `user`(
+    `user_id`      bigint auto_increment comment '用户ID',
+    `username`     varchar(20)   null comment '用户名',
+    `password`     char(32)      null comment '密码',
+    `phone`        varchar(20)   null comment '手机号',
+    `email`        varchar(30)   null comment '邮箱',
+    `introduction` varchar(200)  null comment '简介',
+    `published`    int           null comment '累计发布',
+    `visits`       bigint        null comment '被访问次数',
+    `likes`        int           null comment '被点赞数',
+    `role`         int default 1 null comment '身份',
+    constraint `user2_user_id_uindex`
         unique (user_id)
 )comment '用户' charset = utf8;
 
@@ -28,9 +23,8 @@ alter table user
 
 create table post(
     post_id      bigint       not null comment '帖子ID',
-    category     int          null comment '分区',
     title        varchar(30)  null comment '标题',
-    content      blob null comment '内容',
+    content      text         null comment '问题描述',
     user_id      bigint       null comment '用户ID',
     views        bigint       null comment '浏览量',
     likes        int          null comment '点赞数',
@@ -53,7 +47,7 @@ create table floor(
     floor_number   int          null comment '楼层编号',
     user_id        bigint       null comment '用户ID',
     likes          int          null comment '点赞数',
-    content        varchar(200) null comment '内容',
+    content        text         null comment '内容',
     create_time    datetime     null comment '发布时间',
     comments       int          null comment '当前评论数',
     total_comments int          null comment '历史评论数',
@@ -68,7 +62,7 @@ create table floor(
 alter table floor
     add primary key (floor_id);
 
-create table comment(
+create table `comment`(
     comment_id      bigint       not null comment '评论ID',
     belong_floor_id bigint       null comment '所属楼层ID',
     comment_number  int          null comment '评论编号',

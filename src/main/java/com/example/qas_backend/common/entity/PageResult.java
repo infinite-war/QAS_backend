@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -21,6 +22,17 @@ public class PageResult<T> {
 
     //数量
     private Integer total;
+
+    public void createRecords(){
+        this.records=new ArrayList<T>();
+    }
+    public void add(T item){
+        this.records.add(item);
+    }
+
+    public void clear(){
+        this.records.clear();
+    }
 }
 
 

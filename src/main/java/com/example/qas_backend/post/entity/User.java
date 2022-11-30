@@ -31,18 +31,6 @@ public class User implements Serializable {
     //密码
     private String password;
 
-    //昵称
-    private String nickname;
-
-    //性别
-    private Integer gender;
-
-    //学校
-    private String college;
-
-    //生日
-    private LocalDate birthday;
-
     //手机号
     private String phone;
 
@@ -51,12 +39,6 @@ public class User implements Serializable {
 
     //简介
     private String introduction;
-
-    //论坛等级
-    private Integer level;
-
-    //论坛积分
-    private Integer points;
 
     //累计发帖
     private Integer published;

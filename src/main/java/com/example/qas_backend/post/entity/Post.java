@@ -23,9 +23,6 @@ public class Post implements Serializable {
     @TableId(value = "post_id", type = IdType.INPUT)
     private Long postId;
 
-    //分区
-    private Integer category;
-
     //标题
     private String title;
 
@@ -34,10 +31,6 @@ public class Post implements Serializable {
 
     //用户ID
     private Long userId;
-
-    //用户昵称（post表中不存在）
-    @TableField(exist = false)
-    private String nickname;
 
     //浏览量
     private Long views;

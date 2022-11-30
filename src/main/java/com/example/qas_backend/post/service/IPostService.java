@@ -7,13 +7,15 @@ import com.example.qas_backend.post.dto.PagingParam;
 import com.example.qas_backend.post.dto.SearchParam;
 import com.example.qas_backend.post.entity.Post;
 
+import java.io.IOException;
+
 /**
  * 帖子服务接口
  */
 public interface IPostService extends IService<Post> {
 
     //发表帖子
-    Result publishPost(String token, NewPost newPost);
+    Result publishPost(String token, NewPost newPost) throws IOException;
 
     //删除帖子
     Result deletePost(String token, Long postId);
@@ -31,6 +33,6 @@ public interface IPostService extends IService<Post> {
     Result getPostDetail(String token, Long postId, PagingParam pagingParam);
 
     //获取帖子列表
-    Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam);
+    Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) throws IOException;
 
 }

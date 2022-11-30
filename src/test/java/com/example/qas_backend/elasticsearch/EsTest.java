@@ -1,6 +1,10 @@
 package com.example.qas_backend.elasticsearch;
 
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.qas_backend.post.entity.ESPost;
+import com.example.qas_backend.post.entity.Post;
+import com.example.qas_backend.post.mapper.PostMapper;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -29,6 +33,45 @@ public class EsTest {
 
     @Autowired
     private ElasticsearchClient client;
+
+    @Autowired
+    private PostMapper postMapper;
+
+
+    @Test
+    // 将数据库中的post记录批量添加到es中
+    public void insertToEs() throws IOException {
+        DeleteIndexResponse deleteIndexResponse = client.indices().delete(d -> d.index("post"));
+        System.out.println(deleteIndexResponse.acknowledged());
+
+        CreateIndexResponse createIndexResponse=client.indices().create(c->c.index("post"));
+
+
+        // 批量添加数据
+        QueryWrapper<Post>queryWrapper=new QueryWrapper<>();
+        List<Post> posts = postMapper.selectList(queryWrapper);
+        List<BulkOperation> bulkOperationArrayList = new ArrayList<>();
+
+        BulkRequest.Builder br=new BulkRequest.Builder();
+        for (Post post : posts) {
+            ESPost esPost = new ESPost(post);
+            br.operations(o->o.index(i->i.index("post")
+                    .id(esPost.getPostId().toString())
+                    .document(esPost)));
+        }
+        BulkResponse bulkResponse = client.bulk(br.build());
+        System.out.println(bulkResponse);
+
+//        for (Post post : posts) {
+//            bulkOperationArrayList.add(BulkOperation.of(o->o.index(i->i.document(new ESPost(post)))));
+//        }
+//        BulkResponse bulkResponse = client.bulk(b -> b
+//                .index("post")
+//                .operations(bulkOperationArrayList));
+//        System.out.println(bulkResponse);
+    }
+
+
 
 
     //====================================================================================

@@ -58,7 +58,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         Long id = tokenUtils.getUserIdFromToken(token);
         User user = userMapper.selectById(id);
         // Result类会将传入参数包装成json字符串传输到前端
-        return new Result(true, StatusCode.OK, "获取成功", new UserOutline(user.getUserId(), user.getNickname(),user.getRole().toString()));
+        return new Result(true, StatusCode.OK, "获取成功", new UserOutline(user.getUserId(),user.getRole().toString()));
     }
 
     @Override
@@ -67,10 +67,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //新建对象封装修改信息
         User expectedUser = new User();
         expectedUser.setUserId(id);
-        expectedUser.setNickname(userModification.getNickname());
-        expectedUser.setGender(userModification.getGender());
-        expectedUser.setCollege(userModification.getCollege());
-        expectedUser.setBirthday(userModification.getBirthday());
         expectedUser.setPhone(userModification.getPhone());
         expectedUser.setEmail(userModification.getEmail());
         expectedUser.setIntroduction(userModification.getIntroduction());
@@ -102,18 +98,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setUsername(loginParam.getUsername());
         // 把明文密码通过Md5加密后进行存储
         user.setPassword(Md5Utils.encode(loginParam.getPassword()));
-        // 初始昵称为username，可以后面再改
-        user.setNickname(loginParam.getUsername());
-        // 0代表性别未知
-        user.setGender(0);
-        user.setCollege("未设置");
-        // 初始生日为注册日期，可以后面再改
-        user.setBirthday(LocalDate.now());
         user.setPhone("未设置");
         user.setIntroduction("未设置");
-        // 新人的论坛等级都是一级
-        user.setLevel(1);
-        user.setPoints(0);
         user.setPublished(0);
         user.setVisits(0L);
         user.setLikes(0);
@@ -143,7 +129,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringStringHashMap.put("role", user.getRole().toString());
         //结合上面三个基本信息给登录用户发放token，后续与后端的交互都要经过token验证
         String token = tokenUtils.createToken(stringStringHashMap);
-        return new Result(true, StatusCode.OK, "登录成功", new UserOutline(user.getUserId(), user.getNickname(), user.getRole().toString(), token));
+        return new Result(true, StatusCode.OK, "登录成功", new UserOutline(user.getUserId(), user.getRole().toString(), token));
     }
 
 //    @Override

@@ -1,5 +1,14 @@
 package com.example.qas_backend.post.service.impl;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch.core.IndexResponse;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.search.Highlight;
+import co.elastic.clients.elasticsearch.core.search.HighlightField;
+import co.elastic.clients.elasticsearch.core.search.HighlighterType;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -11,10 +20,7 @@ import com.example.qas_backend.common.util.IdWorker;
 import com.example.qas_backend.post.dto.NewPost;
 import com.example.qas_backend.post.dto.PagingParam;
 import com.example.qas_backend.post.dto.SearchParam;
-import com.example.qas_backend.post.entity.Comment;
-import com.example.qas_backend.post.entity.Floor;
-import com.example.qas_backend.post.entity.Post;
-import com.example.qas_backend.post.entity.User;
+import com.example.qas_backend.post.entity.*;
 import com.example.qas_backend.post.mapper.CommentMapper;
 import com.example.qas_backend.post.mapper.FloorMapper;
 import com.example.qas_backend.post.mapper.PostMapper;
@@ -24,52 +30,49 @@ import com.example.qas_backend.common.util.RedisUtils;
 import com.example.qas_backend.common.util.WrapperOrderPlugin;
 import com.example.qas_backend.post.views.PublishPost;
 import com.example.qas_backend.common.util.TokenUtils;
+import org.apache.catalina.authenticator.SavedRequest;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 帖子服务实现类
  */
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
-
-    private UserMapper userMapper;
-
-    private PostMapper postMapper;
-
-    private FloorMapper floorMapper;
-
-    private CommentMapper commentMapper;
-
-    private RedisUtils redisUtils;
-
-    private IdWorker idWorker;
-
-    private TokenUtils tokenUtils;
-
     @Autowired
-    public PostServiceImpl(UserMapper userMapper, PostMapper postMapper, FloorMapper floorMapper, CommentMapper commentMapper, RedisUtils redisUtils, IdWorker idWorker, TokenUtils tokenUtils) {
-        this.userMapper = userMapper;
-        this.postMapper = postMapper;
-        this.floorMapper = floorMapper;
-        this.commentMapper = commentMapper;
-        this.redisUtils = redisUtils;
-        this.idWorker = idWorker;
-        this.tokenUtils = tokenUtils;
-    }
+    private UserMapper userMapper;
+    @Autowired
+    private PostMapper postMapper;
+    @Autowired
+    private FloorMapper floorMapper;
+    @Autowired
+    private CommentMapper commentMapper;
+    @Autowired
+    private RedisUtils redisUtils;
+    @Autowired
+    private IdWorker idWorker;
+    @Autowired
+    private TokenUtils tokenUtils;
+    @Autowired
+    private ElasticsearchClient esClient;
+
 
     @Override
-    public Result publishPost(String token, NewPost newPost) {
+    public Result publishPost(String token, NewPost newPost) throws IOException {
         //将前端传来的贴子信息封装成类
         Post post = new Post();
         Long postId = idWorker.nextId();
         Long userId = tokenUtils.getUserIdFromToken(token);
         post.setPostId(postId);
-        post.setCategory(newPost.getCategory());
         post.setTitle(newPost.getTitle());
         post.setContent(newPost.getContent());
         post.setUserId(userId);
@@ -83,6 +86,17 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         //在数据库中添加帖子记录
         postMapper.insert(post);
         userMapper.increasePublishedNums(userId);
+
+        //在elasticsearch中添加记录
+        ESPost esPost = new ESPost(post);
+        IndexResponse indexResponse=esClient.index(i->i
+                .index("post")
+                .id(esPost.getPostId().toString())
+                .document(esPost));
+
+        System.out.println(indexResponse.index());
+        System.out.println(indexResponse);
+
         return new Result(true, StatusCode.OK, "帖子发布成功", new PublishPost(postId));
     }
 
@@ -131,7 +145,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         if (pagingParam.getPage() == 1) {
             redisUtils.increasePostViews(postId);
         }
-        post.setNickname(userMapper.getNicknameById(post.getUserId()));
         //如果当前处于登录状态，则需要查看一下发出请求的用户有没有给这个帖子点过赞
         if (loginStatus) {
             post.setLiked(redisUtils.queryUserIsLike(userId, postId));
@@ -167,43 +180,90 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
     @Override
-    public Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) {
-        //判断用户是否处于属于登录状态
-        boolean loginStatus = false;
-        Long userId = null;
-        if (token != null) {
-            loginStatus = true;
-            userId = tokenUtils.getUserIdFromToken(token);
+    public Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) throws IOException {
+//        if(pagingParam.getPage()<1 || pagingParam.getPage()==null){
+//            pagingParam.setPage(0);
+//        }
+//        if(pagingParam.getSize()<1 || pagingParam.getSize()==null){
+//            pagingParam.setSize(10);
+//        }
+
+        Map<String, HighlightField> map=new HashMap<>();
+        map.put("title",HighlightField.of(hf->hf.numberOfFragments(0)));
+        Highlight highlight=Highlight.of(
+                h->h.type(HighlighterType.Unified)
+                        .fields(map)
+                        .fragmentSize(50)
+                        .numberOfFragments(5)
+        );
+
+        SearchResponse<ESPost> search = esClient.search(s -> s
+                        .index("post")
+                        //查询name字段包含hello的document(不使用分词器精确查找)
+                        .query(q -> q
+                                .match(m->m.field("title")
+                                        .query(searchParam.getKeyword()))
+                                )
+                .highlight(highlight)
+                        //分页查询，从第0页开始查询3个document
+                        .from(pagingParam.getPage())
+                        .size(pagingParam.getSize())
+                        //按age降序排序
+                        .sort(f->f.field(o->o.field("totalFloors")
+                                .order(SortOrder.Desc))
+                        ),ESPost.class
+        );
+
+        PageResult<ESPost> pageResult = new PageResult<>();
+        pageResult.createRecords();
+        for (Hit<ESPost> hit : search.hits().hits()) {
+            System.out.println(hit.source());
+            assert hit.source() != null; // 非空断言
+            ESPost esPost=new ESPost(hit.source());
+            esPost.setTitle(hit.highlight().get("title").toString().replace("[","").replace("]",""));// 替换为高亮的标题
+            pageResult.add(esPost);
         }
-        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
-        //如果SearchParam存在参数，则加入QueryWrapper中作为查询条件
-        if ((searchParam.getKeyword() != null) && (!searchParam.getKeyword().isBlank())) {
-            queryWrapper.like("title", searchParam.getKeyword());
-        }
-        if (searchParam.getUserId() != null) {
-            queryWrapper.eq("user_id", searchParam.getUserId());
-        }
-        if (searchParam.getCategory() != null) {
-            queryWrapper.eq("category", searchParam.getCategory());
-        }
-        WrapperOrderPlugin.addOrderToPostWrapper(queryWrapper, pagingParam.getOrder());
-        //对帖子进行分页处理
-        IPage<Post> page = new Page<>(pagingParam.getPage(), pagingParam.getSize());
-        IPage<Post> result = postMapper.selectPage(page, queryWrapper);
-        List<Post> postList = result.getRecords();
-        for (Post post : postList) {
-            post.setNickname(userMapper.getNicknameById(post.getUserId()));
-            if (loginStatus) {
-                post.setLiked(redisUtils.queryUserIsLike(userId, post.getPostId()));
-            }
-        }
-        System.out.println(postList);
-        //填充PageResult
-        PageResult<Post> pageResult = new PageResult<>();
-        pageResult.setRecords(postList);
-        pageResult.setTotal(postList.size());
         return new Result(true, StatusCode.OK, "查询成功", pageResult);
     }
+
+
+    //    @Override
+//    public Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) {
+//        //判断用户是否处于属于登录状态
+//        boolean loginStatus = false;
+//        Long userId = null;
+//        if (token != null) {
+//            loginStatus = true;
+//            userId = tokenUtils.getUserIdFromToken(token);
+//        }
+//        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
+//        //如果SearchParam存在参数，则加入QueryWrapper中作为查询条件
+//        if ((searchParam.getKeyword() != null) && (!searchParam.getKeyword().isBlank())) {
+//            queryWrapper.like("title", searchParam.getKeyword());
+//        }
+//        if (searchParam.getUserId() != null) {
+//            queryWrapper.eq("user_id", searchParam.getUserId());
+//        }
+//        if (searchParam.getCategory() != null) {
+//            queryWrapper.eq("category", searchParam.getCategory());
+//        }
+//        WrapperOrderPlugin.addOrderToPostWrapper(queryWrapper, pagingParam.getOrder());
+//        //对帖子进行分页处理
+//        IPage<Post> page = new Page<>(pagingParam.getPage(), pagingParam.getSize());
+//        IPage<Post> result = postMapper.selectPage(page, queryWrapper);
+//        List<Post> postList = result.getRecords();
+//        for (Post post : postList) {
+//            if (loginStatus) {
+//                post.setLiked(redisUtils.queryUserIsLike(userId, post.getPostId()));
+//            }
+//        }
+//        System.out.println(postList);
+//        //填充PageResult
+//        PageResult<Post> pageResult = new PageResult<>();
+//        pageResult.setRecords(postList);
+//        pageResult.setTotal(postList.size());
+//        return new Result(true, StatusCode.OK, "查询成功", pageResult);
+//    }
 
     @Override
     public Result likedThePost(String token, Long postId){

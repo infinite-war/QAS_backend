@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.io.IOException;
 
 /**
  * 帖子控制器
@@ -29,7 +30,7 @@ public class PostController {
     //帖子发布请求
     @UserRequired
     @PostMapping
-    public Result publishPost(@RequestHeader String token, @Valid @RequestBody NewPost newPost) {
+    public Result publishPost(@RequestHeader String token, @Valid @RequestBody NewPost newPost) throws IOException {
         return postService.publishPost(token, newPost);
     }
 
@@ -48,7 +49,7 @@ public class PostController {
 
     //获取帖子列表
     @GetMapping("/posts")
-    public Result getPostList(@RequestHeader String token, SearchParam searchParam, @Valid PagingParam pagingParam) {
+    public Result getPostList(@RequestHeader String token, SearchParam searchParam, @Valid PagingParam pagingParam) throws IOException {
         return postService.getPostList(token, searchParam, pagingParam);
     }
 
@@ -74,4 +75,3 @@ public class PostController {
     }
 
 }
-

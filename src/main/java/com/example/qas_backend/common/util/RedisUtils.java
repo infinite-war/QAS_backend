@@ -16,6 +16,7 @@ public class RedisUtils {
     @Autowired
     private RedisTemplate redisTemplate;
 
+
     //检查指定的用户是否赞过目标id代表的帖子/楼层/评论
     public Boolean queryUserIsLike(Long userId, Long targetId) {
         return redisTemplate.opsForSet().isMember(userId + "Like", targetId);
