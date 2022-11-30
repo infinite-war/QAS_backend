@@ -1,6 +1,10 @@
 package com.example.qas_backend.elasticsearch;
 
 
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
+import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.json.JsonData;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.qas_backend.post.entity.ESPost;
 import com.example.qas_backend.post.entity.Post;
@@ -23,9 +27,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.*;
 
 
 @SpringBootTest
@@ -41,11 +45,75 @@ public class EsTest {
     @Test
     // 将数据库中的post记录批量添加到es中
     public void insertToEs() throws IOException {
-        DeleteIndexResponse deleteIndexResponse = client.indices().delete(d -> d.index("post"));
-        System.out.println(deleteIndexResponse.acknowledged());
-
-        CreateIndexResponse createIndexResponse=client.indices().create(c->c.index("post"));
-
+//        DeleteIndexResponse deleteIndexResponse = client.indices().delete(d -> d.index("post"));
+//        System.out.println(deleteIndexResponse.acknowledged());
+//
+////        Map<String, Property> map=new HashMap<>();
+////        map.put("post_id",{"type":"long"});
+////        TypeMapping.Builder tb=new TypeMapping.Builder();
+////        tb.properties();
+////        CreateIndexResponse createIndexResponse=client.indices().create(c->c.index("post")
+////                .mappings(m->m.properties(
+////
+////                )));
+//
+//        Reader input = new StringReader(
+//                "PUT post\n" +
+//                        "{\n" +
+//                        "  \"mappings\": {\n" +
+//                        "    \"properties\": {\n" +
+//                        "      \"post_id\":{\n" +
+//                        "        \"type\":\"long\"\n" +
+//                        "      },\n" +
+//                        "      \"title\":{\n" +
+//                        "        \"type\": \"keyword\",\n" +
+//                        "        \"fields\": {\n" +
+//                        "            \"ik_max_analyzer\": {\n" +
+//                        "              \"type\": \"text\",\n" +
+//                        "              \"analyzer\": \"ik_max_word\",\n" +
+//                        "              \"search_analyzer\": \"ik_max_word\"\n" +
+//                        "            },\n" +
+//                        "            \"ik_smart_analyzer\": {\n" +
+//                        "              \"type\": \"text\",\n" +
+//                        "              \"analyzer\": \"ik_smart\"\n" +
+//                        "            }\n" +
+//                        "          }\n" +
+//                        "      },\n" +
+//                        "      \"content\":{\n" +
+//                        "        \"type\": \"text\"\n" +
+//                        "      },\n" +
+//                        "      \"user_id\":{\n" +
+//                        "        \"type\": \"integer\"\n" +
+//                        "      },\n" +
+//                        "      \"views\":{\n" +
+//                        "        \"type\": \"long\"\n" +
+//                        "      },\n" +
+//                        "      \"likes\":{\n" +
+//                        "        \"type\": \"integer\"\n" +
+//                        "      },\n" +
+//                        "      \"create_time\":{\n" +
+//                        "        \"type\": \"date\"\n" +
+//                        "      },\n" +
+//                        "      \"update_time\":{\n" +
+//                        "        \"type\": \"date\"\n" +
+//                        "      },\n" +
+//                        "      \"floors\":{\n" +
+//                        "        \"type\": \"integer\"\n" +
+//                        "      },\n" +
+//                        "      \"total_floors\":{\n" +
+//                        "        \"type\": \"integer\"\n" +
+//                        "      }\n" +
+//                        "    }\n" +
+//                        "  }\n" +
+//                        "}"
+//        );
+////        CreateIndexRequest createIndexRequest= CreateIndexRequest.of(i->i.index("post").withJson(input));
+//        IndexRequest<JsonData> request=IndexRequest.of(i->i
+//                .index("post")
+//                .withJson(input)
+//        );
+//        IndexResponse indexResponse = client.index(request);
+//        System.out.println(indexResponse);
 
         // 批量添加数据
         QueryWrapper<Post>queryWrapper=new QueryWrapper<>();

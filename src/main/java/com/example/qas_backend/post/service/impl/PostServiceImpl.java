@@ -180,16 +180,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
     @Override
-    public Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) throws IOException {
-//        if(pagingParam.getPage()<1 || pagingParam.getPage()==null){
-//            pagingParam.setPage(0);
-//        }
-//        if(pagingParam.getSize()<1 || pagingParam.getSize()==null){
-//            pagingParam.setSize(10);
-//        }
+    public Result getPostList(SearchParam searchParam, PagingParam pagingParam) throws IOException {
 
         Map<String, HighlightField> map=new HashMap<>();
-        map.put("title",HighlightField.of(hf->hf.numberOfFragments(0)));
+        map.put("title.ik_max_analyzer",HighlightField.of(hf->hf.numberOfFragments(0)));
         Highlight highlight=Highlight.of(
                 h->h.type(HighlighterType.Unified)
                         .fields(map)
@@ -197,21 +191,37 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                         .numberOfFragments(5)
         );
 
+//        SearchResponse<ESPost> search = esClient.search(s -> s
+//                        .index("post")
+//                        //查询name字段包含hello的document(不使用分词器精确查找)
+//                        .query(q -> q
+//                                .match(m->m.field("title")
+//                                        .query(searchParam.getKeyword()))
+//                                )
+//                .highlight(highlight)
+//                        //分页查询，从第0页开始查询3个document
+//                        .from(pagingParam.getPage())
+//                        .size(pagingParam.getSize())
+//                        //按age降序排序
+//                        .sort(f->f.field(o->o.field("totalFloors")
+//                                .order(SortOrder.Desc))
+//                        ),ESPost.class
+//        );
         SearchResponse<ESPost> search = esClient.search(s -> s
-                        .index("post")
-                        //查询name字段包含hello的document(不使用分词器精确查找)
-                        .query(q -> q
-                                .match(m->m.field("title")
-                                        .query(searchParam.getKeyword()))
-                                )
+                .index("post")
+                //查询name字段包含hello的document(不使用分词器精确查找)
+                .query(q -> q
+                        .match(m->m.field("title.ik_max_analyzer")
+                                .query(searchParam.getKeyword()))
+                )
                 .highlight(highlight)
-                        //分页查询，从第0页开始查询3个document
-                        .from(pagingParam.getPage())
-                        .size(pagingParam.getSize())
-                        //按age降序排序
-                        .sort(f->f.field(o->o.field("totalFloors")
-                                .order(SortOrder.Desc))
-                        ),ESPost.class
+                //分页查询，从第0页开始查询3个document
+                .from(pagingParam.getPage())
+                .size(pagingParam.getSize())
+                //按age降序排序
+                .sort(f->f.field(o->o.field("totalFloors")
+                        .order(SortOrder.Desc))
+                ),ESPost.class
         );
 
         PageResult<ESPost> pageResult = new PageResult<>();
@@ -220,7 +230,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             System.out.println(hit.source());
             assert hit.source() != null; // 非空断言
             ESPost esPost=new ESPost(hit.source());
-            esPost.setTitle(hit.highlight().get("title").toString().replace("[","").replace("]",""));// 替换为高亮的标题
+            esPost.setTitle(hit.highlight().get("title.ik_max_analyzer").toString().replace("[","").replace("]",""));// 替换为高亮的标题
             pageResult.add(esPost);
         }
         return new Result(true, StatusCode.OK, "查询成功", pageResult);
@@ -228,14 +238,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
 
     //    @Override
-//    public Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) {
-//        //判断用户是否处于属于登录状态
-//        boolean loginStatus = false;
-//        Long userId = null;
-//        if (token != null) {
-//            loginStatus = true;
-//            userId = tokenUtils.getUserIdFromToken(token);
-//        }
+//    public Result getPostList(SearchParam searchParam, PagingParam pagingParam) {
 //        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
 //        //如果SearchParam存在参数，则加入QueryWrapper中作为查询条件
 //        if ((searchParam.getKeyword() != null) && (!searchParam.getKeyword().isBlank())) {

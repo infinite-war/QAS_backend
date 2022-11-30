@@ -49,8 +49,8 @@ public class PostController {
 
     //获取帖子列表
     @GetMapping("/posts")
-    public Result getPostList(@RequestHeader String token, SearchParam searchParam, @Valid PagingParam pagingParam) throws IOException {
-        return postService.getPostList(token, searchParam, pagingParam);
+    public Result getPostList(SearchParam searchParam, @Valid PagingParam pagingParam) throws IOException {
+        return postService.getPostList(searchParam, pagingParam);
     }
 
     //是否赞过帖子

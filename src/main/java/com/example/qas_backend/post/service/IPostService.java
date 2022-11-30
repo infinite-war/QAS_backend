@@ -33,6 +33,6 @@ public interface IPostService extends IService<Post> {
     Result getPostDetail(String token, Long postId, PagingParam pagingParam);
 
     //获取帖子列表
-    Result getPostList(String token, SearchParam searchParam, PagingParam pagingParam) throws IOException;
+    Result getPostList(SearchParam searchParam, PagingParam pagingParam) throws IOException;
 
 }
