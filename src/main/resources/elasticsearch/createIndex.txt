@@ -1,0 +1,67 @@
+
+// 创建post索引，通过javaapi运行会报错，暂时没有找到解决方法
+PUT post
+{
+  "mappings": {
+    "properties": {
+      "post_id":{
+        "type":"long"
+      },
+      "title":{
+        "type": "keyword",     // 给title设置分词器
+        "fields": {
+            "ik_max_analyzer": {
+              "type": "text",
+              "analyzer": "ik_max_word",
+              "search_analyzer": "ik_max_word"
+            },
+            "ik_smart_analyzer": {
+              "type": "text",
+              "analyzer": "ik_smart"
+            }
+          }
+      },
+      "content":{
+        "type": "text"
+      },
+      "user_id":{
+        "type": "integer"
+      },
+      "views":{
+        "type": "long"
+      },
+      "likes":{
+        "type": "integer"
+      },
+      "create_time":{
+        "type": "date"
+      },
+      "update_time":{
+        "type": "date"
+      },
+      "floors":{
+        "type": "integer"
+      },
+      "total_floors":{
+        "type": "integer"
+      }
+    }
+  }
+}
+
+
+GET post/_search
+{
+  "query": {
+    "match": {
+      "title.ik_max_analyzer":{
+        "query": "入门精通"
+      }
+    }
+  },
+  "highlight": {
+    "fields": {
+      "title.ik_max_analyzer": {}
+    }
+  }
+}
