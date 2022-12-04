@@ -37,7 +37,7 @@ public class PostController {
     //删除帖子请求
     @UserRequired
     @DeleteMapping("/{postId}")
-    public Result deletePost(@RequestHeader String token, @PathVariable Long postId) {
+    public Result deletePost(@RequestHeader String token, @PathVariable Long postId) throws IOException {
         return postService.deletePost(token, postId);
     }
 

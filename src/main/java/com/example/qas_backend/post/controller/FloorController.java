@@ -17,7 +17,7 @@ import javax.validation.Valid;
 @RequestMapping("/post/floor")
 public class FloorController {
 
-    private IFloorService floorService;
+    private final IFloorService floorService;
 
     @Autowired
     public FloorController(IFloorService floorService) {

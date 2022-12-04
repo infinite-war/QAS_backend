@@ -1,4 +1,4 @@
-package com.example.qas_backend.post.views;
+package com.example.qas_backend.post.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

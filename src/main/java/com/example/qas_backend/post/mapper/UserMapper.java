@@ -16,8 +16,8 @@ import org.apache.ibatis.annotations.Update;
 public interface UserMapper extends BaseMapper<User> {
 
     //获取用户的昵称
-    @Select({"select `nickname` from user where user_id = #{userId}"})
-    String getNicknameById(Long userId);
+    @Select({"select `username` from user where user_id = #{userId}"})
+    String getUserNameById(Long userId);
 
     //帖子发布数+1
     @Update({"update `user` set `published`=`published`+ 1 where user_id = #{userId}"})

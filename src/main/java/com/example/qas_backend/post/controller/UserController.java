@@ -64,6 +64,7 @@ public class UserController {
         return userService.modifyOwnPassword(token, passwordModification);
     }
 
+    @UserRequired
     //获取用户列表
     @GetMapping("/users")
     public Result getUserList(@RequestHeader String token, SearchParam searchParam, @Valid PagingParam pagingParam) {

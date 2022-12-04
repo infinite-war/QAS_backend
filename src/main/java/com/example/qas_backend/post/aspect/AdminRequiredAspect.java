@@ -3,9 +3,12 @@ package com.example.qas_backend.post.aspect;
 import com.auth0.jwt.exceptions.AlgorithmMismatchException;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
+import com.example.qas_backend.common.consts.UserRole;
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.common.entity.StatusCode;
 import com.example.qas_backend.common.util.JwtUtils;
+import com.example.qas_backend.common.util.TokenUtils;
+import com.example.qas_backend.post.mapper.UserMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -25,6 +28,8 @@ import java.util.Map;
 public class AdminRequiredAspect {
 
     @Autowired
+    UserMapper userMapper;
+    @Autowired
     HttpServletRequest request;
 
     @Autowired
@@ -32,6 +37,8 @@ public class AdminRequiredAspect {
 
     @Autowired
     JwtUtils jwtUtils;
+    @Autowired
+    TokenUtils tokenUtils;
 
     @Around("@annotation(com.example.qas_backend.post.aspect.AdminRequired)")
     public Object around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
@@ -46,6 +53,12 @@ public class AdminRequiredAspect {
         response.setMessage("权限不足");
         try {
             jwtUtils.verify(token);
+            Long userId=tokenUtils.getUserIdFromToken(token);
+            if(userMapper.selectById(userId).getRole()!= UserRole.ADMIN){
+                response.setMessage("非管理员，权限不足");
+                return response;
+            }
+
         } catch (SignatureVerificationException e) {
             e.printStackTrace();
             response.setData("无效签名");

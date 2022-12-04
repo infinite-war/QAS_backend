@@ -6,6 +6,8 @@ import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.common.entity.StatusCode;
 import com.example.qas_backend.common.util.JwtUtils;
+import com.example.qas_backend.common.util.TokenUtils;
+import com.example.qas_backend.post.mapper.UserMapper;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -15,6 +17,7 @@ import org.springframework.util.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Map;
 
 /**
  * 通过AOP实现权限鉴定
@@ -23,11 +26,17 @@ import javax.servlet.http.HttpServletResponse;
 @Aspect
 public class UserRequiredAspect {
     @Autowired
+    UserMapper userMapper;
+    @Autowired
     HttpServletRequest request;
     @Autowired
     HttpServletResponse response;
     @Autowired
     JwtUtils jwtUtils;
+
+    @Autowired
+    TokenUtils tokenUtils;
+
 
     @Around("@annotation(com.example.qas_backend.post.aspect.UserRequired)")
     public Object around(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
@@ -42,6 +51,11 @@ public class UserRequiredAspect {
         response.setMessage("权限不足，需要登录才能进行此操作");
         try {
             jwtUtils.verify(token);
+            if(userMapper.getUserNameById(tokenUtils.getUserIdFromToken(token))==null){
+                response.setMessage("用户不存在");
+                return response;
+            }
+
         } catch (SignatureVerificationException e) {
             response.setData("无效签名");
             return response;

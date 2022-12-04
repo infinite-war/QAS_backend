@@ -1,10 +1,6 @@
 package com.example.qas_backend.elasticsearch;
 
 
-import co.elastic.clients.elasticsearch._types.mapping.Property;
-import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
-import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
-import co.elastic.clients.json.JsonData;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.qas_backend.post.entity.ESPost;
 import com.example.qas_backend.post.entity.Post;
@@ -24,7 +20,7 @@ import co.elastic.clients.transport.endpoints.BooleanResponse;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+
 
 import java.io.IOException;
 import java.io.Reader;
@@ -116,20 +112,7 @@ public class EsTest {
 //        System.out.println(indexResponse);
 
         // 批量添加数据
-        QueryWrapper<Post>queryWrapper=new QueryWrapper<>();
-        List<Post> posts = postMapper.selectList(queryWrapper);
-        List<BulkOperation> bulkOperationArrayList = new ArrayList<>();
-
-        BulkRequest.Builder br=new BulkRequest.Builder();
-        for (Post post : posts) {
-            ESPost esPost = new ESPost(post);
-            br.operations(o->o.index(i->i.index("post")
-                    .id(esPost.getPostId().toString())
-                    .document(esPost)));
-        }
-        BulkResponse bulkResponse = client.bulk(br.build());
-        System.out.println(bulkResponse);
-
+        //        List<BulkOperation> bulkOperationArrayList = new ArrayList<>();
 //        for (Post post : posts) {
 //            bulkOperationArrayList.add(BulkOperation.of(o->o.index(i->i.document(new ESPost(post)))));
 //        }
@@ -137,8 +120,62 @@ public class EsTest {
 //                .index("post")
 //                .operations(bulkOperationArrayList));
 //        System.out.println(bulkResponse);
+
+        QueryWrapper<Post>queryWrapper=new QueryWrapper<>();
+        List<Post> posts = postMapper.selectList(queryWrapper);
+
+        BulkRequest.Builder br=new BulkRequest.Builder();
+        int count=1;
+        for (Post post : posts) {
+            ESPost esPost = new ESPost(post);
+            br.operations(o->o.index(i->i.index("post")
+                    .id(esPost.getPostId().toString())
+                    .document(esPost)));
+            System.out.println(count++);
+        }
+        BulkResponse bulkResponse = client.bulk(br.build());
+        System.out.println(bulkResponse);
+
     }
 
+
+    // 对比数据库查询和elasticsearch查询
+    @Test
+    public void compareMysqlAndEs() throws IOException{
+        // mysql查询 1669948809326-1669948808770
+        int start= (int) System.currentTimeMillis();
+
+        QueryWrapper<Post> queryWrapper=new QueryWrapper<>();
+        queryWrapper.like("title","军人");
+        List<Post> post = postMapper.selectList(queryWrapper);
+        System.out.println((int)System.currentTimeMillis()-start + "ms");
+
+//        // es查询
+//        System.out.println(System.currentTimeMillis());
+//        Map<String, HighlightField> map=new HashMap<>();
+//        map.put("title.ik_max_analyzer",HighlightField.of(hf->hf.numberOfFragments(0)));
+//        Highlight highlight=Highlight.of(
+//                h->h.type(HighlighterType.Unified)
+//                        .fields(map)
+//                        .fragmentSize(50)
+//                        .numberOfFragments(5)
+//        );
+//
+//        SearchResponse<ESPost> search = client.search(s -> s
+//                .index("post")
+//                //查询name字段包含hello的document(不使用分词器精确查找)
+//                .query(q -> q
+//                        .match(m->m.field("title.ik_max_analyzer")
+//                                .query("军人"))
+//                )
+//                .highlight(highlight)
+//                //按age降序排序
+//                ,ESPost.class
+//        );
+//        System.out.println(System.currentTimeMillis());
+
+
+    }
 
 
 
@@ -207,6 +244,33 @@ public class EsTest {
                 , User.class);
         System.out.println(updateResponse);
     }
+
+
+    //通过script更新文档
+    @Test
+    public void updateDocumentByScript() throws IOException{
+//        org.elasticsearch.action.update.UpdateRequest request= new org.elasticsearch.action.update.UpdateRequest("testdb","2");
+//        String jsonString="{\n" + "\"script\":\"ctx._source.score+=125\"\n" + "}\n";
+//        request.doc(jsonString, XContentType.JSON);
+//        client.putScript(p->p.id("add")
+//                .script(s->s.source("{\"script\":\"ctx._source.score+=125\"}\n")));
+//        client.update
+        Reader input = new StringReader("{\"script\":\"ctx._source.score+=125\"}");
+
+//        CreateIndexRequest createIndexRequest= CreateIndexRequest.of(i->i.index("post").withJson(input));
+//        IndexRequest<JsonData> request=IndexRequest.of(i->i
+//                .index("testdb")
+//                .withJson(input)
+//        );
+//
+//        UpdateRequest updateRequest=UpdateRequest.of(o-> o.index("testdb")
+//                .id("2")
+//                .script());
+//
+//        IndexResponse indexResponse = client.index(request);
+//        System.out.println(indexResponse);
+    }
+
 
     //判断document是否存在
     @Test

@@ -12,7 +12,7 @@ import com.example.qas_backend.post.mapper.FloorMapper;
 import com.example.qas_backend.post.mapper.UserMapper;
 import com.example.qas_backend.post.service.ICommentService;
 import com.example.qas_backend.common.util.RedisUtils;
-import com.example.qas_backend.post.views.PublishComment;
+import com.example.qas_backend.post.dto.PublishComment;
 import com.example.qas_backend.common.util.TokenUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -26,21 +26,18 @@ import java.time.LocalDateTime;
 @Service
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements ICommentService {
 
-    private UserMapper userMapper;
+    private final FloorMapper floorMapper;
 
-    private FloorMapper floorMapper;
+    private final CommentMapper commentMapper;
 
-    private CommentMapper commentMapper;
+    private final RedisUtils redisUtils;
 
-    private RedisUtils redisUtils;
+    private final IdWorker idWorker;
 
-    private IdWorker idWorker;
-
-    private TokenUtils tokenUtils;
+    private final TokenUtils tokenUtils;
 
     @Autowired
     public CommentServiceImpl(UserMapper userMapper, FloorMapper floorMapper, CommentMapper commentMapper, RedisUtils redisUtils, IdWorker idWorker, TokenUtils tokenUtils) {
-        this.userMapper = userMapper;
         this.floorMapper = floorMapper;
         this.commentMapper = commentMapper;
         this.redisUtils = redisUtils;

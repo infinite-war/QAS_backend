@@ -15,7 +15,7 @@ import com.example.qas_backend.post.mapper.PostMapper;
 import com.example.qas_backend.post.mapper.UserMapper;
 import com.example.qas_backend.post.service.IFloorService;
 import com.example.qas_backend.common.util.RedisUtils;
-import com.example.qas_backend.post.views.PublishFloor;
+import com.example.qas_backend.post.dto.PublishFloor;
 import com.example.qas_backend.common.util.TokenUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -29,19 +29,18 @@ import java.time.LocalDateTime;
 @Service
 public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements IFloorService {
 
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
+    private final PostMapper postMapper;
 
-    private PostMapper postMapper;
+    private final FloorMapper floorMapper;
 
-    private FloorMapper floorMapper;
+    private final CommentMapper commentMapper;
 
-    private CommentMapper commentMapper;
+    private final RedisUtils redisUtils;
 
-    private RedisUtils redisUtils;
+    private final IdWorker idWorker;
 
-    private IdWorker idWorker;
-
-    private TokenUtils tokenUtils;
+    private final TokenUtils tokenUtils;
 
     @Autowired
     public FloorServiceImpl(UserMapper userMapper, PostMapper postMapper, FloorMapper floorMapper, CommentMapper commentMapper, RedisUtils redisUtils, IdWorker idWorker, TokenUtils tokenUtils) {
@@ -88,6 +87,9 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
     public Result deleteFloor(String token, Long floorId) {
         Long userId = tokenUtils.getUserIdFromToken(token);
         Floor floor = floorMapper.selectById(floorId);
+//        if(userMapper.getUserNameById(userId)==null){
+//            return new Result(false,StatusCode.ACCESS_ERROR,"用户不存在");
+//        }
         if (floor == null) {
             return new Result(false, StatusCode.PARAM_ERROR, "删除失败，指定的楼层不存在");
         }

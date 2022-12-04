@@ -28,12 +28,9 @@ import com.example.qas_backend.post.mapper.UserMapper;
 import com.example.qas_backend.post.service.IPostService;
 import com.example.qas_backend.common.util.RedisUtils;
 import com.example.qas_backend.common.util.WrapperOrderPlugin;
-import com.example.qas_backend.post.views.PublishPost;
+import com.example.qas_backend.post.dto.PublishPost;
 import com.example.qas_backend.common.util.TokenUtils;
-import org.apache.catalina.authenticator.SavedRequest;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.builder.SearchSourceBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.json.stream.JsonParser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,22 +45,25 @@ import java.util.Map;
  */
 @Service
 public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IPostService {
-    @Autowired
-    private UserMapper userMapper;
-    @Autowired
-    private PostMapper postMapper;
-    @Autowired
-    private FloorMapper floorMapper;
-    @Autowired
-    private CommentMapper commentMapper;
-    @Autowired
-    private RedisUtils redisUtils;
-    @Autowired
-    private IdWorker idWorker;
-    @Autowired
-    private TokenUtils tokenUtils;
-    @Autowired
-    private ElasticsearchClient esClient;
+    private final UserMapper userMapper;
+    private final PostMapper postMapper;
+    private final FloorMapper floorMapper;
+    private final CommentMapper commentMapper;
+    private final RedisUtils redisUtils;
+    private final IdWorker idWorker;
+    private final TokenUtils tokenUtils;
+    private final ElasticsearchClient esClient;
+
+    public PostServiceImpl(UserMapper userMapper, PostMapper postMapper, FloorMapper floorMapper, CommentMapper commentMapper, RedisUtils redisUtils, IdWorker idWorker, TokenUtils tokenUtils, ElasticsearchClient esClient) {
+        this.userMapper = userMapper;
+        this.postMapper = postMapper;
+        this.floorMapper = floorMapper;
+        this.commentMapper = commentMapper;
+        this.redisUtils = redisUtils;
+        this.idWorker = idWorker;
+        this.tokenUtils = tokenUtils;
+        this.esClient = esClient;
+    }
 
 
     @Override
@@ -102,7 +102,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
 
     @Override
     @Transactional
-    public Result deletePost(String token, Long postId) {
+    public Result deletePost(String token, Long postId) throws IOException {
         //获取发出删除请求的用户id
         //只有当前id是这个帖子的发布者，才能执行删除操作
         Long userId = tokenUtils.getUserIdFromToken(token);
@@ -114,7 +114,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         if (!(userId.equals(post.getUserId()) || user.getRole()==1)) {
             return new Result(false, StatusCode.ACCESS_ERROR, "删除失败，无权操作");
         }
-        //先清空这个帖子下的所有楼层
+        //先清空这个帖子下的所有楼层(删除楼层的过程中还要删除底下的评论)
         List<Floor> floorList = floorMapper.selectList(new QueryWrapper<Floor>().eq("belong_post_id", postId));
         for (Floor floor : floorList) {
             commentMapper.delete(new QueryWrapper<Comment>().eq("belong_floor_id", floor.getFloorId()));
@@ -123,6 +123,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         //楼层清空后再删除帖子
         postMapper.deleteById(postId);
         userMapper.decreasePublishedNums(userId);
+        // es中删除对应的帖子
+        esClient.delete(d->d.index("post").id(postId.toString()));
+
         return new Result(true, StatusCode.OK, "删除成功");
     }
 
@@ -160,7 +163,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         //加载这个帖子下的楼层
         post.setFloorList(floorList);
         for (Floor floor : floorList) {
-            floor.setNickname(userMapper.getNicknameById(floor.getUserId()));
+            floor.setUsername(userMapper.getUserNameById(floor.getUserId()));
             if (loginStatus) {
                 floor.setLiked(redisUtils.queryUserIsLike(userId, floor.getFloorId()));
             }
@@ -170,7 +173,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
                     .eq("belong_floor_id", floor.getFloorId()).orderByAsc("comment_number"));
             floor.setCommentList(commentList);
             for (Comment comment : commentList) {
-                comment.setNickname(userMapper.getNicknameById(comment.getUserId()));
+                comment.setNickname(userMapper.getUserNameById(comment.getUserId()));
                 if (loginStatus) {
                     comment.setLiked(redisUtils.queryUserIsLike(userId, comment.getCommentId()));
                 }
@@ -179,48 +182,38 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         return new Result(true, StatusCode.OK, "获取成功", post);
     }
 
+    //使用es查询
     @Override
     public Result getPostList(SearchParam searchParam, PagingParam pagingParam) throws IOException {
 
         Map<String, HighlightField> map=new HashMap<>();
+        // 设置分词器
         map.put("title.ik_max_analyzer",HighlightField.of(hf->hf.numberOfFragments(0)));
+        // 设置高亮
         Highlight highlight=Highlight.of(
                 h->h.type(HighlighterType.Unified)
                         .fields(map)
                         .fragmentSize(50)
                         .numberOfFragments(5)
+                        .preTags("<span style=\"color: red\">")
+                        .postTags("</span>")
         );
 
-//        SearchResponse<ESPost> search = esClient.search(s -> s
-//                        .index("post")
-//                        //查询name字段包含hello的document(不使用分词器精确查找)
-//                        .query(q -> q
-//                                .match(m->m.field("title")
-//                                        .query(searchParam.getKeyword()))
-//                                )
-//                .highlight(highlight)
-//                        //分页查询，从第0页开始查询3个document
-//                        .from(pagingParam.getPage())
-//                        .size(pagingParam.getSize())
-//                        //按age降序排序
-//                        .sort(f->f.field(o->o.field("totalFloors")
-//                                .order(SortOrder.Desc))
-//                        ),ESPost.class
-//        );
+        // 查询
         SearchResponse<ESPost> search = esClient.search(s -> s
                 .index("post")
                 //查询name字段包含hello的document(不使用分词器精确查找)
                 .query(q -> q
+//                        .match(m->m
+//                                .query(searchParam.getKeyword()))
                         .match(m->m.field("title.ik_max_analyzer")
-                                .query(searchParam.getKeyword()))
+                                .query(searchParam.getKeyword().toString()))
                 )
                 .highlight(highlight)
                 //分页查询，从第0页开始查询3个document
                 .from(pagingParam.getPage())
-                .size(pagingParam.getSize())
-                //按age降序排序
-                .sort(f->f.field(o->o.field("totalFloors")
-                        .order(SortOrder.Desc))
+                .size(pagingParam.getSize()
+                //es内部会根据词频给匹配到的结果进行打分(score)，返回的结果基于分值降序排序
                 ),ESPost.class
         );
 
@@ -237,7 +230,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
 
-    //    @Override
+// mysql查询
+//   @Override
 //    public Result getPostList(SearchParam searchParam, PagingParam pagingParam) {
 //        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
 //        //如果SearchParam存在参数，则加入QueryWrapper中作为查询条件
@@ -273,7 +267,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         Long userId = tokenUtils.getUserIdFromToken(token);
         //查看发请求的人之前是不是赞过这个帖子
         boolean liked = redisUtils.queryUserIsLike(userId, postId);
-        Long publisherId=postMapper.selectById(postId).getUserId();
         //之前没有赞过
         if (!liked) {
             return new Result(false, StatusCode.OK, "未点赞");

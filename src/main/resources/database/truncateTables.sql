@@ -1,0 +1,10 @@
+SET foreign_key_checks = 0;
+truncate table comment;
+commit ;
+truncate table floor;
+commit ;
+truncate table post;
+commit ;
+truncate table user;
+commit ;
+SET foreign_key_checks = 1;

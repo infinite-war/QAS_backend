@@ -15,7 +15,7 @@ public class PagingParam {
     private Integer size;
 
     //当前页数
-    @Min(1)
+    @Min(0)
     private Integer page;
 
     //显示顺序

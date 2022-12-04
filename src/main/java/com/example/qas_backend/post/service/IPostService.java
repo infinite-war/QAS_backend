@@ -18,7 +18,7 @@ public interface IPostService extends IService<Post> {
     Result publishPost(String token, NewPost newPost) throws IOException;
 
     //删除帖子
-    Result deletePost(String token, Long postId);
+    Result deletePost(String token, Long postId) throws IOException;
 
     //是否赞过
     Result likedThePost(String token, Long postId);

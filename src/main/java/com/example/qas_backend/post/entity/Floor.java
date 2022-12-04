@@ -34,7 +34,7 @@ public class Floor implements Serializable {
 
     //用户昵称（floor表中不存在）
     @TableField(exist = false)
-    private String nickname;
+    private String username;
 
     //点赞数
     private Integer likes;

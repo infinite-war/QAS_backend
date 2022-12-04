@@ -1,7 +1,17 @@
 package com.example.qas_backend.common.util;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.Script;
+import co.elastic.clients.elasticsearch._types.StoredScriptId;
+
+import co.elastic.clients.elasticsearch.core.UpdateResponse;
+import co.elastic.clients.util.ObjectBuilder;
+import com.example.qas_backend.post.entity.ESPost;
+import com.example.qas_backend.post.entity.Post;
 import com.example.qas_backend.post.mapper.PostMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.elasticsearch.action.update.UpdateRequest;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -16,14 +26,15 @@ import java.util.Map;
 public class ScheduledService {
 
     private final RedisUtils redisUtils;
-
     private final PostMapper postMapper;
+    private final ElasticsearchClient esClient;
 
-    @Autowired
-    public ScheduledService(RedisUtils redisUtils, PostMapper postMapper) {
+    public ScheduledService(RedisUtils redisUtils, PostMapper postMapper, ElasticsearchClient esClient) {
         this.redisUtils = redisUtils;
         this.postMapper = postMapper;
+        this.esClient = esClient;
     }
+
 
     //每过5秒就将缓存中的浏览量写入数据库
     @Scheduled(fixedRate = 5 * 1000)
@@ -35,7 +46,20 @@ public class ScheduledService {
             for (Map.Entry<String, Integer> entry : map.entrySet()) {
                 Long postId = Long.parseLong(entry.getKey());
                 try {
+                    //更新数据库
                     postMapper.increaseViewsBySpecifiedAmount(postId, Long.valueOf(entry.getValue()));
+
+                    //更新es
+                    Post curPost=postMapper.selectById(postId);
+                    ESPost curESPost=new ESPost(curPost);
+
+                    UpdateResponse<ESPost> updateResponse = esClient.update(u -> u
+                            .index("post")
+                            .id(postId.toString())
+                            .doc(curESPost)
+                    , ESPost.class);
+                    System.out.println(updateResponse);
+
                 } catch (Exception e) {
                     log.info("浏览量写入MySQL时出现异常，异常为" + e.getMessage() + "，帖子ID为" + postId);
                 }

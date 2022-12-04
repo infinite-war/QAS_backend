@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.qas_backend.common.consts.UserRole;
 import com.example.qas_backend.common.entity.PageResult;
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.common.entity.StatusCode;
@@ -18,14 +19,13 @@ import com.example.qas_backend.post.mapper.PostMapper;
 import com.example.qas_backend.post.mapper.UserMapper;
 import com.example.qas_backend.post.service.IUserService;
 import com.example.qas_backend.common.util.WrapperOrderPlugin;
-import com.example.qas_backend.post.views.UserOutline;
+import com.example.qas_backend.post.dto.UserOutline;
 import com.example.qas_backend.common.util.Md5Utils;
 import com.example.qas_backend.common.util.TokenUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 
@@ -190,7 +190,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //只有当前id是这个帖子的发布者，才能执行删除操作
         Long userId = tokenUtils.getUserIdFromToken(token);
         User admin=userMapper.selectById(userId);
-        if(admin==null || admin.getRole()!=1){
+        if(admin==null || admin.getRole()!= UserRole.ADMIN){
             return new Result(false, StatusCode.ACCESS_ERROR, "删除失败，没有该权限");
         }
 

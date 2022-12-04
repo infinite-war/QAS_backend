@@ -12,13 +12,7 @@ import org.springframework.data.elasticsearch.annotations.DateFormat;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
-import java.util.List;
 
-/**
- * @author :infinite-war
- * @date : 2022/11/30 15:45
- * @desc :
- */
 
 // elasticsearchs中的Post实体类
 @Data
