@@ -63,15 +63,29 @@ public class PostController {
     //给帖子点赞
     @UserRequired
     @PostMapping("/like/{postId}")
-    public Result likeThePost(@RequestHeader String token, @PathVariable Long postId) {
+    public Result likeThePost(@RequestHeader String token, @PathVariable Long postId) throws IOException {
         return postService.likeThePost(token, postId);
     }
 
     //帖子取消赞
     @UserRequired
     @DeleteMapping("/like/{postId}")
-    public Result dislikeThePost(@RequestHeader String token, @PathVariable Long postId) {
+    public Result dislikeThePost(@RequestHeader String token, @PathVariable Long postId) throws IOException {
         return postService.dislikeThePost(token, postId);
+    }
+
+
+    //获取用户自己发布的帖子
+    @UserRequired
+    @GetMapping("/myposts")
+    public Result getMyPosts(@RequestHeader String token,SearchParam searchParam,@Valid PagingParam pagingParam) throws IOException {
+        return postService.getMyPosts(token,searchParam,pagingParam);
+    }
+
+    //随机获取10个帖子
+    @GetMapping("/getRandom")
+    public Result getRandomPosts()throws IOException{
+        return postService.getRandomPosts();
     }
 
 }

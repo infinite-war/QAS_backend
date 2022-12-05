@@ -14,6 +14,4 @@ public class SearchParam {
     //用户ID
     private Long userId;
 
-    //分区
-    private Integer category;
 }

@@ -1,11 +1,17 @@
 package com.example.qas_backend.post.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.qas_backend.common.entity.PageResult;
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.common.entity.StatusCode;
 import com.example.qas_backend.common.util.IdWorker;
+import com.example.qas_backend.common.util.WrapperOrderPlugin;
 import com.example.qas_backend.post.dto.NewFloor;
+import com.example.qas_backend.post.dto.PagingParam;
+import com.example.qas_backend.post.dto.SearchParam;
 import com.example.qas_backend.post.entity.Comment;
 import com.example.qas_backend.post.entity.Floor;
 import com.example.qas_backend.post.entity.Post;
@@ -22,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 楼层服务实现类
@@ -131,5 +138,37 @@ public class FloorServiceImpl extends ServiceImpl<FloorMapper, Floor> implements
             return new Result(true, StatusCode.OK, "取消点赞成功");
         }
         return new Result(true, StatusCode.REP_ERROR, "尚未给楼层点赞，无法取消点赞");
+    }
+
+    @Override
+    public Result getMyFloors(String token, SearchParam searchParam, PagingParam pagingParam){
+        if(pagingParam.getPage()==null){
+            pagingParam.setPage(0);
+        }
+        if(pagingParam.getSize()==null){
+            pagingParam.setSize(10);
+        }
+
+        QueryWrapper<Floor> queryWrapper = new QueryWrapper<>();
+        //如果SearchParam存在参数，则加入QueryWrapper中作为查询条件
+        if ((searchParam.getKeyword() != null) && (!searchParam.getKeyword().isBlank())) {
+            queryWrapper.like("content", searchParam.getKeyword());
+        }
+        if (searchParam.getUserId() != null) {
+            queryWrapper.eq("user_id", searchParam.getUserId());
+        }
+        WrapperOrderPlugin.addTimeOrderToFloorWrapper(queryWrapper,pagingParam.getOrder());
+        //对帖子进行分页处理
+        IPage<Floor> page = new Page<>(pagingParam.getPage(), pagingParam.getSize());
+        IPage<Floor> result = floorMapper.selectPage(page, queryWrapper);
+        List<Floor> floorList = result.getRecords();
+
+//        System.out.println(floorList);
+        //填充PageResult
+        PageResult<Floor> pageResult = new PageResult<>();
+        pageResult.setRecords(floorList);
+        pageResult.setTotal(floorList.size());
+        return new Result(true, StatusCode.OK, "查询成功", pageResult);
+
     }
 }

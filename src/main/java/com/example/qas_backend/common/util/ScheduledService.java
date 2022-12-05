@@ -27,12 +27,13 @@ public class ScheduledService {
 
     private final RedisUtils redisUtils;
     private final PostMapper postMapper;
-    private final ElasticsearchClient esClient;
+    private final ESopUtils eSopUtils;
 
-    public ScheduledService(RedisUtils redisUtils, PostMapper postMapper, ElasticsearchClient esClient) {
+
+    public ScheduledService(RedisUtils redisUtils, PostMapper postMapper, ESopUtils eSopUtils) {
         this.redisUtils = redisUtils;
         this.postMapper = postMapper;
-        this.esClient = esClient;
+        this.eSopUtils = eSopUtils;
     }
 
 
@@ -50,18 +51,10 @@ public class ScheduledService {
                     postMapper.increaseViewsBySpecifiedAmount(postId, Long.valueOf(entry.getValue()));
 
                     //更新es
-                    Post curPost=postMapper.selectById(postId);
-                    ESPost curESPost=new ESPost(curPost);
-
-                    UpdateResponse<ESPost> updateResponse = esClient.update(u -> u
-                            .index("post")
-                            .id(postId.toString())
-                            .doc(curESPost)
-                    , ESPost.class);
-                    System.out.println(updateResponse);
+                    eSopUtils.updateESPostViews(postId,Long.valueOf(entry.getValue()));
 
                 } catch (Exception e) {
-                    log.info("浏览量写入MySQL时出现异常，异常为" + e.getMessage() + "，帖子ID为" + postId);
+                    log.info("浏览量写入MySQL(或es)时出现异常，异常为" + e.getMessage() + "，帖子ID为" + postId);
                 }
                 redisUtils.deletePostViewsInCache(postId);
             }

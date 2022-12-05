@@ -24,10 +24,10 @@ public interface IPostService extends IService<Post> {
     Result likedThePost(String token, Long postId);
 
     //给帖子点赞
-    Result likeThePost(String token, Long postId);
+    Result likeThePost(String token, Long postId) throws IOException;
 
     //给帖子取消赞
-    Result dislikeThePost(String token, Long postId);
+    Result dislikeThePost(String token, Long postId) throws IOException;
 
     //获取帖子详情页
     Result getPostDetail(String token, Long postId, PagingParam pagingParam);
@@ -35,4 +35,9 @@ public interface IPostService extends IService<Post> {
     //获取帖子列表
     Result getPostList(SearchParam searchParam, PagingParam pagingParam) throws IOException;
 
+    //获取用户自己发布的帖子
+    Result getMyPosts(String token,SearchParam searchParam,PagingParam pagingParam) throws IOException;
+
+    //随机获取10个帖子
+    Result getRandomPosts() throws IOException;
 }

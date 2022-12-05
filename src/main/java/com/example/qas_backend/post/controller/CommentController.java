@@ -3,6 +3,8 @@ package com.example.qas_backend.post.controller;
 
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.post.dto.NewComment;
+import com.example.qas_backend.post.dto.PagingParam;
+import com.example.qas_backend.post.dto.SearchParam;
 import com.example.qas_backend.post.service.ICommentService;
 import com.example.qas_backend.post.aspect.UserRequired;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +19,7 @@ import javax.validation.Valid;
 @RequestMapping("/post/comment")
 public class CommentController {
 
-    private ICommentService commentService;
+    private final ICommentService commentService;
 
     @Autowired
     public CommentController(ICommentService commentService) {
@@ -50,6 +52,14 @@ public class CommentController {
     @DeleteMapping("/like/{commentId}")
     public Result dislikeTheComment(@RequestHeader String token, @PathVariable Long commentId) {
         return commentService.dislikeTheComment(token, commentId);
+    }
+
+
+    //获取自己的子评论
+    @UserRequired
+    @GetMapping("/mycomments")
+    public Result getMyComments(@RequestHeader String token, SearchParam searchParam, @Valid PagingParam pagingParam){
+        return commentService.getMyComments(token,searchParam,pagingParam);
     }
 
 }

@@ -12,10 +12,6 @@ import javax.validation.constraints.NotBlank;
 @Data
 public class PasswordModification {
 
-    //用户ID
-    @Min(0)
-    private Long userId;
-
     //旧密码
     @NotBlank
     @Length(min = 6)

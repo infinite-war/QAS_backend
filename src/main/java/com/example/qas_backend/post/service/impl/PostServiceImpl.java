@@ -1,14 +1,7 @@
 package com.example.qas_backend.post.service.impl;
 
-import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.SortOrder;
-import co.elastic.clients.elasticsearch.core.IndexResponse;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
-import co.elastic.clients.elasticsearch.core.search.Highlight;
-import co.elastic.clients.elasticsearch.core.search.HighlightField;
-import co.elastic.clients.elasticsearch.core.search.HighlighterType;
-import co.elastic.clients.elasticsearch.core.search.Hit;
+import co.elastic.clients.elasticsearch.core.search.*;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -16,7 +9,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.qas_backend.common.entity.PageResult;
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.common.entity.StatusCode;
-import com.example.qas_backend.common.util.IdWorker;
+import com.example.qas_backend.common.util.*;
 import com.example.qas_backend.post.dto.NewPost;
 import com.example.qas_backend.post.dto.PagingParam;
 import com.example.qas_backend.post.dto.SearchParam;
@@ -26,19 +19,13 @@ import com.example.qas_backend.post.mapper.FloorMapper;
 import com.example.qas_backend.post.mapper.PostMapper;
 import com.example.qas_backend.post.mapper.UserMapper;
 import com.example.qas_backend.post.service.IPostService;
-import com.example.qas_backend.common.util.RedisUtils;
-import com.example.qas_backend.common.util.WrapperOrderPlugin;
 import com.example.qas_backend.post.dto.PublishPost;
-import com.example.qas_backend.common.util.TokenUtils;
-import jakarta.json.stream.JsonParser;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 帖子服务实现类
@@ -52,9 +39,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     private final RedisUtils redisUtils;
     private final IdWorker idWorker;
     private final TokenUtils tokenUtils;
-    private final ElasticsearchClient esClient;
+    private final ESopUtils eSopUtils;
 
-    public PostServiceImpl(UserMapper userMapper, PostMapper postMapper, FloorMapper floorMapper, CommentMapper commentMapper, RedisUtils redisUtils, IdWorker idWorker, TokenUtils tokenUtils, ElasticsearchClient esClient) {
+    public PostServiceImpl(UserMapper userMapper, PostMapper postMapper, FloorMapper floorMapper, CommentMapper commentMapper, RedisUtils redisUtils, IdWorker idWorker, TokenUtils tokenUtils, ESopUtils eSopUtils) {
         this.userMapper = userMapper;
         this.postMapper = postMapper;
         this.floorMapper = floorMapper;
@@ -62,7 +49,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         this.redisUtils = redisUtils;
         this.idWorker = idWorker;
         this.tokenUtils = tokenUtils;
-        this.esClient = esClient;
+        this.eSopUtils = eSopUtils;
     }
 
 
@@ -88,14 +75,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         userMapper.increasePublishedNums(userId);
 
         //在elasticsearch中添加记录
-        ESPost esPost = new ESPost(post);
-        IndexResponse indexResponse=esClient.index(i->i
-                .index("post")
-                .id(esPost.getPostId().toString())
-                .document(esPost));
-
-        System.out.println(indexResponse.index());
-        System.out.println(indexResponse);
+        if(!eSopUtils.insertESPost(post)){
+            return new Result(false, StatusCode.ERROR,"elasticsearch中帖子添加失败");
+        }
 
         return new Result(true, StatusCode.OK, "帖子发布成功", new PublishPost(postId));
     }
@@ -124,7 +106,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
         postMapper.deleteById(postId);
         userMapper.decreasePublishedNums(userId);
         // es中删除对应的帖子
-        esClient.delete(d->d.index("post").id(postId.toString()));
+        if(!eSopUtils.deleteESPost(postId)){
+            return new Result(false,StatusCode.ERROR,"elasticsearch中的帖子记录删除失败");
+        }
 
         return new Result(true, StatusCode.OK, "删除成功");
     }
@@ -186,36 +170,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     @Override
     public Result getPostList(SearchParam searchParam, PagingParam pagingParam) throws IOException {
 
-        Map<String, HighlightField> map=new HashMap<>();
-        // 设置分词器
-        map.put("title.ik_max_analyzer",HighlightField.of(hf->hf.numberOfFragments(0)));
-        // 设置高亮
-        Highlight highlight=Highlight.of(
-                h->h.type(HighlighterType.Unified)
-                        .fields(map)
-                        .fragmentSize(50)
-                        .numberOfFragments(5)
-                        .preTags("<span style=\"color: red\">")
-                        .postTags("</span>")
-        );
-
-        // 查询
-        SearchResponse<ESPost> search = esClient.search(s -> s
-                .index("post")
-                //查询name字段包含hello的document(不使用分词器精确查找)
-                .query(q -> q
-//                        .match(m->m
-//                                .query(searchParam.getKeyword()))
-                        .match(m->m.field("title.ik_max_analyzer")
-                                .query(searchParam.getKeyword().toString()))
-                )
-                .highlight(highlight)
-                //分页查询，从第0页开始查询3个document
-                .from(pagingParam.getPage())
-                .size(pagingParam.getSize()
-                //es内部会根据词频给匹配到的结果进行打分(score)，返回的结果基于分值降序排序
-                ),ESPost.class
-        );
+        SearchResponse<ESPost> search = eSopUtils.searchPosts(searchParam, pagingParam);
 
         PageResult<ESPost> pageResult = new PageResult<>();
         pageResult.createRecords();
@@ -275,7 +230,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
     @Override
-    public Result likeThePost(String token, Long postId) {
+    public Result likeThePost(String token, Long postId) throws IOException {
         Long userId = tokenUtils.getUserIdFromToken(token);
         //查看发请求的人之前是不是赞过这个帖子
         boolean liked = redisUtils.queryUserIsLike(userId, postId);
@@ -288,13 +243,21 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             postMapper.increasePostLikes(postId);
             //贴主获赞数+1
             userMapper.increaseLikesNums(publisherId);
+
+            //更新es中的post记录
+            eSopUtils.increaseESPostLikes(postId);
+
+            if(!eSopUtils.updateESPost(postId)){
+                return new Result(false,StatusCode.ERROR,"elasticsearch中的帖子记录更新失败");
+            }
+
             return new Result(true, StatusCode.OK, "点赞成功");
         }
         return new Result(false, StatusCode.REP_ERROR, "已经给帖子点赞，无法再次点赞");
     }
 
     @Override
-    public Result dislikeThePost(String token, Long postId) {
+    public Result dislikeThePost(String token, Long postId) throws IOException {
         Long userId = tokenUtils.getUserIdFromToken(token);
         //查看是不是点过赞
         boolean liked = redisUtils.queryUserIsLike(userId, postId);
@@ -305,8 +268,54 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
             redisUtils.removeUserLike(userId, postId);
             postMapper.decreasePostLikes(postId);
             userMapper.decreaseLikesNums(publisherId);
+            eSopUtils.decreaseESPostLikes(postId);
+            if(!eSopUtils.updateESPost(postId)){
+                return new Result(false,StatusCode.ERROR,"elasticsearch中的帖子记录更新失败");
+            }
             return new Result(true, StatusCode.OK, "取消点赞成功");
         }
         return new Result(false, StatusCode.REP_ERROR, "尚未给帖子点赞，无法取消点赞");
+    }
+
+
+    // 获取用户自己发布的帖子
+    @Override
+    public Result getMyPosts(String token,SearchParam searchParam,PagingParam pagingParam){
+        Long userId=tokenUtils.getUserIdFromToken(token);
+        PageResult<ESPost> pageResult = new PageResult<>();
+        try {
+            SearchResponse<ESPost> myPosts = eSopUtils.getMyPosts(userId,searchParam,pagingParam);
+
+            pageResult.createRecords();
+            for (Hit<ESPost> hit : myPosts.hits().hits()) {
+                System.out.println(hit.source());
+                assert hit.source() != null; // 非空断言
+                ESPost esPost=new ESPost(hit.source());
+                pageResult.add(esPost);
+            }
+        }catch (Exception e){
+            return new Result(false,StatusCode.ERROR,"查询失败");
+        }
+        return new Result(true,StatusCode.OK,"查询成功",pageResult);
+    }
+
+    @Override
+    public Result getRandomPosts() throws IOException {
+
+        PageResult<ESPost> pageResult = new PageResult<>();
+        try {
+            SearchResponse<ESPost> myPosts = eSopUtils.getRandomPosts();
+
+            pageResult.createRecords();
+            for (Hit<ESPost> hit : myPosts.hits().hits()) {
+                System.out.println(hit.source());
+                assert hit.source() != null; // 非空断言
+                ESPost esPost=new ESPost(hit.source());
+                pageResult.add(esPost);
+            }
+        }catch (Exception e){
+            return new Result(false,StatusCode.ERROR,"查询失败");
+        }
+        return new Result(true,StatusCode.OK,"查询成功",pageResult);
     }
 }

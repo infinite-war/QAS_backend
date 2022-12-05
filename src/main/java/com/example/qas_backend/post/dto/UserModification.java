@@ -15,27 +15,6 @@ import java.time.LocalDate;
 @Data
 public class UserModification {
 
-    //用户ID
-    @Min(0)
-    private Long userId;
-
-    //昵称
-    @NotBlank
-    private String nickname;
-
-    //性别
-    @Min(0)
-    @Max(2)
-    private Integer gender;
-
-    //学校
-    @NotBlank
-    @Length(max = 10)
-    private String college;
-
-    //生日
-    private LocalDate birthday;
-
     //手机号
     @NotBlank
     @Length(max = 20)

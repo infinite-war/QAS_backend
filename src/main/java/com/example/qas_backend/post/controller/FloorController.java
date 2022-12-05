@@ -3,6 +3,8 @@ package com.example.qas_backend.post.controller;
 
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.post.dto.NewFloor;
+import com.example.qas_backend.post.dto.PagingParam;
+import com.example.qas_backend.post.dto.SearchParam;
 import com.example.qas_backend.post.service.IFloorService;
 import com.example.qas_backend.post.aspect.UserRequired;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,5 +54,12 @@ public class FloorController {
         return floorService.dislikeTheFloor(token, floorId);
     }
 
+
+    // 获取自己发布的楼层
+    @UserRequired
+    @GetMapping("/myfloors")
+    public Result getMyFloors(@RequestHeader String token, SearchParam searchParam, @Valid PagingParam pagingParam){
+        return floorService.getMyFloors(token,searchParam,pagingParam);
+    }
 }
 

@@ -153,6 +153,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result getUserList(String token, SearchParam searchParam, PagingParam pagingParam) {
+        if(pagingParam.getPage()==null){
+            pagingParam.setPage(0);
+        }
+        if(pagingParam.getSize()==null){
+            pagingParam.setSize(10);
+        }
+
         //判断用户是否处于属于登录状态
         boolean loginStatus = false;
         Long userId = null;

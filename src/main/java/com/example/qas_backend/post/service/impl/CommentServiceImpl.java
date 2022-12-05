@@ -1,10 +1,17 @@
 package com.example.qas_backend.post.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.qas_backend.common.entity.PageResult;
 import com.example.qas_backend.common.entity.Result;
 import com.example.qas_backend.common.entity.StatusCode;
 import com.example.qas_backend.common.util.IdWorker;
+import com.example.qas_backend.common.util.WrapperOrderPlugin;
 import com.example.qas_backend.post.dto.NewComment;
+import com.example.qas_backend.post.dto.PagingParam;
+import com.example.qas_backend.post.dto.SearchParam;
 import com.example.qas_backend.post.entity.Comment;
 import com.example.qas_backend.post.entity.Floor;
 import com.example.qas_backend.post.mapper.CommentMapper;
@@ -14,11 +21,13 @@ import com.example.qas_backend.post.service.ICommentService;
 import com.example.qas_backend.common.util.RedisUtils;
 import com.example.qas_backend.post.dto.PublishComment;
 import com.example.qas_backend.common.util.TokenUtils;
+import org.elasticsearch.client.core.PageParams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 评论服务实现类
@@ -27,13 +36,9 @@ import java.time.LocalDateTime;
 public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> implements ICommentService {
 
     private final FloorMapper floorMapper;
-
     private final CommentMapper commentMapper;
-
     private final RedisUtils redisUtils;
-
     private final IdWorker idWorker;
-
     private final TokenUtils tokenUtils;
 
     @Autowired
@@ -114,5 +119,38 @@ public class CommentServiceImpl extends ServiceImpl<CommentMapper, Comment> impl
             return new Result(true, StatusCode.OK, "取消点赞成功");
         }
         return new Result(true, StatusCode.REP_ERROR, "尚未给评论点赞，无法取消点赞");
+    }
+
+
+    @Override
+    public Result getMyComments(String token, SearchParam searchParam, PagingParam pagingParam){
+        if(pagingParam.getPage()==null){
+            pagingParam.setPage(0);
+        }
+        if(pagingParam.getSize()==null){
+            pagingParam.setSize(10);
+        }
+
+        QueryWrapper<Comment> queryWrapper = new QueryWrapper<>();
+        //如果SearchParam存在参数，则加入QueryWrapper中作为查询条件
+        if ((searchParam.getKeyword() != null) && (!searchParam.getKeyword().isBlank())) {
+            queryWrapper.like("content", searchParam.getKeyword());
+        }
+        if (searchParam.getUserId() != null) {
+            queryWrapper.eq("user_id", searchParam.getUserId());
+        }
+
+        WrapperOrderPlugin.addTimeOrderToCommentWrapper(queryWrapper,pagingParam.getOrder());
+        //对帖子进行分页处理
+        IPage<Comment> page = new Page<>(pagingParam.getPage(), pagingParam.getSize());
+        IPage<Comment> result = commentMapper.selectPage(page, queryWrapper);
+        List<Comment> commentList = result.getRecords();
+
+//        System.out.println(floorList);
+        //填充PageResult
+        PageResult<Comment> pageResult = new PageResult<>();
+        pageResult.setRecords(commentList);
+        pageResult.setTotal(commentList.size());
+        return new Result(true, StatusCode.OK, "查询成功", pageResult);
     }
 }

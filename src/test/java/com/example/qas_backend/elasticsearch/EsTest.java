@@ -1,10 +1,15 @@
 package com.example.qas_backend.elasticsearch;
 
 
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.qas_backend.post.entity.ESPost;
 import com.example.qas_backend.post.entity.Post;
 import com.example.qas_backend.post.mapper.PostMapper;
+import org.elasticsearch.script.Script;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.ScriptSortBuilder;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -20,12 +25,15 @@ import co.elastic.clients.transport.endpoints.BooleanResponse;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 
 
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.*;
+
+import static org.springframework.data.redis.core.query.SortQueryBuilder.sort;
 
 
 @SpringBootTest
@@ -36,6 +44,53 @@ public class EsTest {
 
     @Autowired
     private PostMapper postMapper;
+
+
+    // 附带json串更新文档
+    @Test
+    public void updateDoc() throws IOException{
+        Reader input = new StringReader("{\"script\":\"ctx._source.score+=125\"}");
+        client.update(u->u
+                .index("testdb")
+                .id("2")
+                .withJson(input)
+                ,ESPost.class);
+    }
+
+
+    @Test
+    public void searchMyPost() throws IOException{
+        SearchResponse<ESPost> search = client.search(s -> s
+                .index("post")
+                .query(q -> q
+                        .term(t -> t.field("userId").value(2))
+                )
+
+                //分页查询
+                .from(0)
+                .size(10)
+                        .sort(f->f.field(o->o.field("updateTime").order(SortOrder.Desc)))
+                , ESPost.class
+        );
+        System.out.println(search.hits().hits());
+    }
+    @Test
+    public void searchAll() throws IOException {
+        // 查询
+        SearchResponse<ESPost> search = client.search(s -> s
+                        .index("post")
+                        //查询name字段包含hello的document(不使用分词器精确查找)
+                        .query(q -> q
+
+                        )
+                        //分页查询，从第0页开始查询3个document
+                        .from(0)
+                        .size(10
+                                //es内部会根据词频给匹配到的结果进行打分(score)，返回的结果基于分值降序排序
+                        ), ESPost.class
+        );
+
+    }
 
 
     @Test
@@ -54,7 +109,6 @@ public class EsTest {
 ////                )));
 //
 //        Reader input = new StringReader(
-//                "PUT post\n" +
 //                        "{\n" +
 //                        "  \"mappings\": {\n" +
 //                        "    \"properties\": {\n" +

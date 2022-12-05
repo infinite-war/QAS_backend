@@ -2,6 +2,7 @@ package com.example.qas_backend.common.util;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.example.qas_backend.post.entity.Comment;
 import com.example.qas_backend.post.entity.Floor;
 import com.example.qas_backend.post.entity.Post;
 import com.example.qas_backend.post.entity.User;
@@ -17,6 +18,14 @@ public class WrapperOrderPlugin {
         queryWrapper.orderByDesc("views");
         queryWrapper.orderByDesc("likes");
         queryWrapper.orderByDesc("floors");
+    }
+
+    public static void addTimeOrderToFloorWrapper(QueryWrapper<Floor> queryWrapper, Integer order) {
+        queryWrapper.orderByDesc("create_time");
+    }
+
+    public static void addTimeOrderToCommentWrapper(QueryWrapper<Comment> queryWrapper, Integer order) {
+        queryWrapper.orderByDesc("create_time");
     }
 
     public static void addOrderToFloorWrapper(QueryWrapper<Floor> queryWrapper, Integer order) {
