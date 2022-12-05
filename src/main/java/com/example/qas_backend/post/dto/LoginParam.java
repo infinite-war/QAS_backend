@@ -14,7 +14,7 @@ import javax.validation.constraints.NotNull;
 public class LoginParam {
 
     //用户Id
-    private Long userId;
+    private String userId;
 
     //密码
     @NotBlank(message = "密码不能为空")

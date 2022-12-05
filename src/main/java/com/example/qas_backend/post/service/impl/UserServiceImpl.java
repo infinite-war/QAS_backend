@@ -113,7 +113,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result login(LoginParam loginParam) {
-        User user = userMapper.selectOne(new QueryWrapper<User>().eq("user_id", loginParam.getUserId()));
+        User user = userMapper.selectOne(new QueryWrapper<User>().eq("user_id", Long.parseLong(loginParam.getUserId())));
         if (user == null) {
             return new Result(false, StatusCode.LOGIN_ERROR, "用户不存在");
         }
