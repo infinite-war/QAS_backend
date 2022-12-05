@@ -27,8 +27,8 @@ public class UserController {
 
     //注册请求
     @PostMapping("/register")
-    public Result register(@Valid @RequestBody LoginParam loginParam) {
-        return userService.register(loginParam);
+    public Result register(@Valid @RequestBody RegisterParam registerParam) {
+        return userService.register(registerParam);
     }
 
     //登录请求

@@ -89,15 +89,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
     }
 
     @Override
-    public Result register(LoginParam loginParam) {
-        User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", loginParam.getUsername()));
+    public Result register(RegisterParam registerParam) {
+        User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", registerParam.getUsername()));
         if (user != null) {
             return new Result(false, StatusCode.REP_ERROR, "该用户名已被使用");
         }
         user = new User();
-        user.setUsername(loginParam.getUsername());
+        user.setUsername(registerParam.getUsername());
         // 把明文密码通过Md5加密后进行存储
-        user.setPassword(Md5Utils.encode(loginParam.getPassword()));
+        user.setPassword(Md5Utils.encode(registerParam.getPassword()));
         user.setPhone("未设置");
         user.setIntroduction("未设置");
         user.setPublished(0);
@@ -108,12 +108,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         //将创建好的新用户添加到数据库中
         userMapper.insert(user);
-        return new Result(true, StatusCode.OK, "注册成功");
+        return new Result(true, StatusCode.OK, "注册成功",user.getUserId());
     }
 
     @Override
     public Result login(LoginParam loginParam) {
-        User user = userMapper.selectOne(new QueryWrapper<User>().eq("username", loginParam.getUsername()));
+        User user = userMapper.selectOne(new QueryWrapper<User>().eq("user_id", loginParam.getUserId()));
         if (user == null) {
             return new Result(false, StatusCode.LOGIN_ERROR, "用户不存在");
         }

@@ -11,7 +11,7 @@ import com.example.qas_backend.post.entity.User;
 public interface IUserService extends IService<User> {
 
     //用户注册
-    Result register(LoginParam loginParam);
+    Result register(RegisterParam registerParam);
 
     //用户登录
     Result login(LoginParam loginParam);
