@@ -20,7 +20,7 @@ import java.io.IOException;
 @RequestMapping("/post")
 public class PostController {
 
-    private IPostService postService;
+    private final IPostService postService;
 
     @Autowired
     public PostController(IPostService postService) {

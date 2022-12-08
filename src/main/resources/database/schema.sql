@@ -6,7 +6,7 @@ use qas;
 create table `user`(
     `user_id`      bigint auto_increment comment '用户ID',
     `username`     varchar(20)   null comment '用户名',
-    `password`     char(32)      null comment '密码',
+    `password`     varchar(32)   null comment '密码',
     `phone`        varchar(20)   null comment '手机号',
     `email`        varchar(30)   null comment '邮箱',
     `introduction` varchar(200)  null comment '简介',

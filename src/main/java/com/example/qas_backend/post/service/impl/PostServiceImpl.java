@@ -300,7 +300,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements IP
     }
 
     @Override
-    public Result getRandomPosts() throws IOException {
+    public Result getRandomPosts() {
 
         PageResult<ESPost> pageResult = new PageResult<>();
         try {

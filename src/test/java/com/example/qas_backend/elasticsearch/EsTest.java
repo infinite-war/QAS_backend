@@ -2,6 +2,7 @@ package com.example.qas_backend.elasticsearch;
 
 
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.json.JsonData;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.example.qas_backend.post.entity.ESPost;
 import com.example.qas_backend.post.entity.Post;
@@ -96,100 +97,75 @@ public class EsTest {
     @Test
     // 将数据库中的post记录批量添加到es中
     public void insertToEs() throws IOException {
-//        DeleteIndexResponse deleteIndexResponse = client.indices().delete(d -> d.index("post"));
-//        System.out.println(deleteIndexResponse.acknowledged());
-//
-////        Map<String, Property> map=new HashMap<>();
-////        map.put("post_id",{"type":"long"});
-////        TypeMapping.Builder tb=new TypeMapping.Builder();
-////        tb.properties();
-////        CreateIndexResponse createIndexResponse=client.indices().create(c->c.index("post")
-////                .mappings(m->m.properties(
-////
-////                )));
-//
-//        Reader input = new StringReader(
-//                        "{\n" +
-//                        "  \"mappings\": {\n" +
-//                        "    \"properties\": {\n" +
-//                        "      \"post_id\":{\n" +
-//                        "        \"type\":\"long\"\n" +
-//                        "      },\n" +
-//                        "      \"title\":{\n" +
-//                        "        \"type\": \"keyword\",\n" +
-//                        "        \"fields\": {\n" +
-//                        "            \"ik_max_analyzer\": {\n" +
-//                        "              \"type\": \"text\",\n" +
-//                        "              \"analyzer\": \"ik_max_word\",\n" +
-//                        "              \"search_analyzer\": \"ik_max_word\"\n" +
-//                        "            },\n" +
-//                        "            \"ik_smart_analyzer\": {\n" +
-//                        "              \"type\": \"text\",\n" +
-//                        "              \"analyzer\": \"ik_smart\"\n" +
-//                        "            }\n" +
-//                        "          }\n" +
-//                        "      },\n" +
-//                        "      \"content\":{\n" +
-//                        "        \"type\": \"text\"\n" +
-//                        "      },\n" +
-//                        "      \"user_id\":{\n" +
-//                        "        \"type\": \"integer\"\n" +
-//                        "      },\n" +
-//                        "      \"views\":{\n" +
-//                        "        \"type\": \"long\"\n" +
-//                        "      },\n" +
-//                        "      \"likes\":{\n" +
-//                        "        \"type\": \"integer\"\n" +
-//                        "      },\n" +
-//                        "      \"create_time\":{\n" +
-//                        "        \"type\": \"date\"\n" +
-//                        "      },\n" +
-//                        "      \"update_time\":{\n" +
-//                        "        \"type\": \"date\"\n" +
-//                        "      },\n" +
-//                        "      \"floors\":{\n" +
-//                        "        \"type\": \"integer\"\n" +
-//                        "      },\n" +
-//                        "      \"total_floors\":{\n" +
-//                        "        \"type\": \"integer\"\n" +
-//                        "      }\n" +
-//                        "    }\n" +
-//                        "  }\n" +
-//                        "}"
-//        );
-////        CreateIndexRequest createIndexRequest= CreateIndexRequest.of(i->i.index("post").withJson(input));
-//        IndexRequest<JsonData> request=IndexRequest.of(i->i
-//                .index("post")
-//                .withJson(input)
-//        );
-//        IndexResponse indexResponse = client.index(request);
-//        System.out.println(indexResponse);
+        DeleteIndexResponse deleteIndexResponse = client.indices().delete(d -> d.index("post"));
+        System.out.println(deleteIndexResponse.acknowledged());
 
-        // 批量添加数据
-        //        List<BulkOperation> bulkOperationArrayList = new ArrayList<>();
-//        for (Post post : posts) {
-//            bulkOperationArrayList.add(BulkOperation.of(o->o.index(i->i.document(new ESPost(post)))));
-//        }
-//        BulkResponse bulkResponse = client.bulk(b -> b
-//                .index("post")
-//                .operations(bulkOperationArrayList));
-//        System.out.println(bulkResponse);
+        Reader input = new StringReader(
+        """
+                {
+                  "mappings": {
+                    "properties": {
+                      "post_id":{
+                        "type":"long"
+                      },
+                      "title":{
+                        "type": "keyword",
+                        "fields": {
+                            "ik_max_analyzer": {
+                              "type": "text",
+                              "analyzer": "ik_max_word",
+                              "search_analyzer": "ik_max_word"
+                            },
+                            "ik_smart_analyzer": {
+                              "type": "text",
+                              "analyzer": "ik_smart"
+                            }
+                          }
+                      },
+                      "content":{
+                        "type": "text"
+                      },
+                      "user_id":{
+                        "type": "integer"
+                      },
+                      "views":{
+                        "type": "long"
+                      },
+                      "likes":{
+                        "type": "integer"
+                      },
+                      "create_time":{
+                        "type": "date"
+                      },
+                      "update_time":{
+                        "type": "date"
+                      },
+                      "floors":{
+                        "type": "integer"
+                      },
+                      "total_floors":{
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+            """
+        );
 
-        QueryWrapper<Post>queryWrapper=new QueryWrapper<>();
-        List<Post> posts = postMapper.selectList(queryWrapper);
+        CreateIndexResponse createResponse = client.indices().create(c -> c.index("post").withJson(input));
 
-        BulkRequest.Builder br=new BulkRequest.Builder();
-        int count=1;
+        System.out.println(createResponse);
+
+        //批量添加数据
+        List<BulkOperation> bulkOperationArrayList = new ArrayList<>();
+        List<Post> posts=postMapper.selectList(new QueryWrapper<>());
         for (Post post : posts) {
-            ESPost esPost = new ESPost(post);
-            br.operations(o->o.index(i->i.index("post")
-                    .id(esPost.getPostId().toString())
-                    .document(esPost)));
-            System.out.println(count++);
+            bulkOperationArrayList.add(BulkOperation.of(o->o.index(i->i.document(new ESPost(post)))));
         }
-        BulkResponse bulkResponse = client.bulk(br.build());
+        BulkResponse bulkResponse = client.bulk(b -> b
+                .index("post")
+                .operations(bulkOperationArrayList));
         System.out.println(bulkResponse);
-
     }
 
 
@@ -227,8 +203,6 @@ public class EsTest {
 //                ,ESPost.class
 //        );
 //        System.out.println(System.currentTimeMillis());
-
-
     }
 
 
