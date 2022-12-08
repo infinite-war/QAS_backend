@@ -43,14 +43,14 @@ public class FloorController {
     //楼层点赞请求
     @UserRequired
     @PostMapping("/like/{floorId}")
-    public Result likeThePost(@RequestHeader String token, @PathVariable Long floorId) {
+    public Result likeTheFloor(@RequestHeader String token, @PathVariable Long floorId) {
         return floorService.likeTheFloor(token, floorId);
     }
 
     //楼层取消赞请求
     @UserRequired
     @DeleteMapping("/like/{floorId}")
-    public Result dislikeThePost(@RequestHeader String token, @PathVariable Long floorId) {
+    public Result dislikeTheFloor(@RequestHeader String token, @PathVariable Long floorId) {
         return floorService.dislikeTheFloor(token, floorId);
     }
 
