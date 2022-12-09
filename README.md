@@ -1,6 +1,8 @@
 # QAS_backend
 问答网站(后端部分)
 
+> 前端仓库 https://github.com/guokuir/Forum-vue-master.git
+
 
 ## 使用
 1. 使用`resources/database/schema.sql`文件执行建表操作
